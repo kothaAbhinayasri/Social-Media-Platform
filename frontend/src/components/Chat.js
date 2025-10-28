@@ -7,7 +7,7 @@ import io from 'socket.io-client';
 const Chat = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { conversations, messages, currentConversation, isLoading } = useSelector(state => state.chat);
+  const { conversations, messages, isLoading } = useSelector(state => state.chat);
   const { user } = useSelector(state => state.auth);
   const [messageText, setMessageText] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -27,6 +27,21 @@ const Chat = () => {
 
     socketRef.current.on('receiveMessage', (message) => {
       dispatch(addMessage(message));
+    });
+
+    socketRef.current.on('postLiked', (data) => {
+      // Handle real-time like notifications
+      console.log('Post liked:', data);
+    });
+
+    socketRef.current.on('postCommented', (data) => {
+      // Handle real-time comment notifications
+      console.log('Post commented:', data);
+    });
+
+    socketRef.current.on('userFollowed', (data) => {
+      // Handle real-time follow notifications
+      console.log('User followed:', data);
     });
 
     return () => {

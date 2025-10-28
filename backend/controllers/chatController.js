@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const logger = require('../utils/logger');
 
 exports.sendMessage = async (req, res) => {
   try {
@@ -9,6 +10,8 @@ exports.sendMessage = async (req, res) => {
     if (!receiver) {
       return res.status(404).json({ message: 'Receiver not found' });
     }
+
+    logger.info(`Message sent by user: ${req.user.username} to ${receiver.username}`);
 
     const message = new Message({
       sender: req.user._id,
@@ -27,6 +30,7 @@ exports.sendMessage = async (req, res) => {
       messageData: message
     });
   } catch (error) {
+    logger.error(`Message sending failed for user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

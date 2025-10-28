@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { register, clearError } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
+import logger from '../utils/logger';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -35,6 +36,7 @@ const Register = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    logger.info('Registration form submitted');
     dispatch(register(formData));
   };
 

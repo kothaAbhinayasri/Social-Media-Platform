@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
+const logger = require('../utils/logger');
 
 exports.getUserProfile = async (req, res) => {
   try {
@@ -56,10 +57,12 @@ exports.followUser = async (req, res) => {
       userToFollow.followers = userToFollow.followers.filter(
         id => id.toString() !== req.user._id.toString()
       );
+      logger.info(`User unfollowed: ${req.user.username} unfollowed ${userToFollow.username}`);
     } else {
       // Follow
       currentUser.following.push(req.params.id);
       userToFollow.followers.push(req.user._id);
+      logger.info(`User followed: ${req.user.username} followed ${userToFollow.username}`);
     }
 
     await currentUser.save();
@@ -70,6 +73,7 @@ exports.followUser = async (req, res) => {
       isFollowing: !isFollowing
     });
   } catch (error) {
+    logger.error(`Follow/unfollow operation failed for user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

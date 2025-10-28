@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
 
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key', {
@@ -11,12 +12,15 @@ exports.register = async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body;
 
+    logger.info(`Registration attempt for email: ${email}, username: ${username}`);
+
     // Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
     });
 
     if (existingUser) {
+      logger.warn(`Registration failed: ${existingUser.email === email ? 'Email' : 'Username'} already exists`);
       return res.status(400).json({
         message: existingUser.email === email ? 'Email already exists' : 'Username already exists'
       });
@@ -33,6 +37,8 @@ exports.register = async (req, res) => {
 
     const token = generateToken(user._id);
 
+    logger.info(`User registered successfully: ${user._id}`);
+
     res.status(201).json({
       message: 'User registered successfully',
       token,
@@ -45,6 +51,7 @@ exports.register = async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error(`Registration error: ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -53,17 +60,22 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    logger.info(`Login attempt for email: ${email}`);
+
     const user = await User.findOne({ email });
     if (!user) {
+      logger.warn(`Login failed: User not found for email: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
+      logger.warn(`Login failed: Invalid password for user: ${user._id}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     if (user.isBlocked) {
+      logger.warn(`Login blocked for user: ${user._id}`);
       return res.status(403).json({ message: 'Account is blocked' });
     }
 
@@ -72,6 +84,8 @@ exports.login = async (req, res) => {
     // Update last active
     user.lastActive = new Date();
     await user.save();
+
+    logger.info(`User logged in successfully: ${user._id}`);
 
     res.json({
       message: 'Login successful',
@@ -88,6 +102,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
+    logger.error(`Login error: ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

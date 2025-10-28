@@ -1,9 +1,12 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
+const logger = require('../utils/logger');
 
 exports.createPost = async (req, res) => {
   try {
     const { content, images, videos, tags, location } = req.body;
+
+    logger.info(`Post creation attempt by user: ${req.user.username} (${req.user._id})`);
 
     const post = new Post({
       author: req.user._id,
@@ -23,11 +26,14 @@ exports.createPost = async (req, res) => {
 
     await post.populate('author', 'username fullName profilePicture');
 
+    logger.info(`Post created successfully: ${post._id} by user: ${req.user.username}`);
+
     res.status(201).json({
       message: 'Post created successfully',
       post
     });
   } catch (error) {
+    logger.error(`Post creation failed for user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -165,9 +171,11 @@ exports.likePost = async (req, res) => {
       post.likes = post.likes.filter(
         like => like.user.toString() !== req.user._id.toString()
       );
+      logger.info(`Post unliked: ${post._id} by user: ${req.user.username}`);
     } else {
       // Like
       post.likes.push({ user: req.user._id });
+      logger.info(`Post liked: ${post._id} by user: ${req.user.username}`);
     }
 
     await post.save();
@@ -178,6 +186,7 @@ exports.likePost = async (req, res) => {
       likes: post.likes
     });
   } catch (error) {
+    logger.error(`Like/unlike operation failed for post: ${req.params.id} by user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPosts, likePost, addComment } from '../features/posts/postsSlice';
+import { fetchPosts, likePost, addComment, createPost } from '../features/posts/postsSlice';
 import { logout } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ const Feed = () => {
   const { user } = useSelector(state => state.auth);
   const [commentText, setCommentText] = useState('');
   const [selectedPostId, setSelectedPostId] = useState(null);
+  const [newPostContent, setNewPostContent] = useState('');
 
   useEffect(() => {
     dispatch(fetchPosts({ page: 1, limit: 10 }));
@@ -25,6 +26,13 @@ const Feed = () => {
       dispatch(addComment({ postId, content: commentText }));
       setCommentText('');
       setSelectedPostId(null);
+    }
+  };
+
+  const handleCreatePost = () => {
+    if (newPostContent.trim()) {
+      dispatch(createPost({ content: newPostContent }));
+      setNewPostContent('');
     }
   };
 
@@ -61,6 +69,12 @@ const Feed = () => {
                 Chat
               </button>
               <button
+                onClick={() => navigate('/notifications')}
+                className="text-indigo-600 hover:text-indigo-500"
+              >
+                Notifications
+              </button>
+              <button
                 onClick={handleLogout}
                 className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
               >
@@ -79,10 +93,16 @@ const Feed = () => {
             className="w-full p-3 border border-gray-300 rounded-md resize-none"
             rows="3"
             placeholder="What's on your mind?"
+            value={newPostContent}
+            onChange={(e) => setNewPostContent(e.target.value)}
           />
           <div className="flex justify-between items-center mt-3">
-            <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-              Post
+            <button
+              onClick={handleCreatePost}
+              disabled={!newPostContent.trim() || isLoading}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isLoading ? 'Posting...' : 'Post'}
             </button>
           </div>
         </div>
@@ -121,7 +141,7 @@ const Feed = () => {
                       <img
                         key={index}
                         src={image}
-                        alt={`Post image ${index + 1}`}
+                        alt={`Post ${index + 1}`}
                         className="w-full rounded-lg"
                       />
                     ))}

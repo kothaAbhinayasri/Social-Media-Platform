@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import logger from '../../utils/logger';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -9,11 +10,14 @@ export const fetchMessages = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Fetching messages for user: ${userId}`);
       const response = await axios.get(`${API_URL}/chat/messages/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Messages fetched successfully: ${response.data.length} messages`);
       return response.data;
     } catch (error) {
+      logger.error(`Messages fetch failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -24,11 +28,14 @@ export const fetchConversations = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Fetching conversations for user`);
       const response = await axios.get(`${API_URL}/chat/conversations`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Conversations fetched successfully: ${response.data.length} conversations`);
       return response.data;
     } catch (error) {
+      logger.error(`Conversations fetch failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -39,6 +46,7 @@ export const sendMessage = createAsyncThunk(
   async ({ receiverId, content, messageType = 'text', mediaUrl = null }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Sending message to user: ${receiverId}`);
       const response = await axios.post(`${API_URL}/chat/send`, {
         receiverId,
         content,
@@ -47,8 +55,10 @@ export const sendMessage = createAsyncThunk(
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Message sent successfully: ${response.data._id}`);
       return response.data;
     } catch (error) {
+      logger.error(`Message sending failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }

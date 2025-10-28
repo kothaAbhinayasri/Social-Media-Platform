@@ -1,29 +1,42 @@
-# Social Media Platform Setup TODO
+# TODO: Complete Social Media Platform Features
 
-## Backend Setup
-- [x] Create backend directory and initialize Node.js project (package.json)
-- [x] Install backend dependencies (express, mongoose, jsonwebtoken, bcryptjs, socket.io, cors, dotenv)
-- [x] Create models: User.js, Post.js, Comment.js, Message.js
-- [x] Create routes: auth.js, posts.js, users.js, chat.js
-- [x] Create controllers: authController.js, postController.js, userController.js, chatController.js
-- [x] Create middleware: auth.js (JWT verification)
-- [x] Create config: database.js (MongoDB connection)
-- [x] Create utils: helpers.js
-- [x] Create server.js (main entry point with Express app, Socket.io setup, MongoDB connection)
+## Completed
+- [x] Backend Logging with Winston
+- [x] Frontend Basic Logging
+- [x] Testing and Verification of Logging
+- [x] Comment system (controller, routes, integration)
+- [x] Post creation API working
 
-## Frontend Setup
-- [x] Create frontend directory and initialize React app with Redux template
-- [x] Install frontend dependencies (tailwindcss, @reduxjs/toolkit, socket.io-client, axios, react-router-dom)
-- [x] Create basic components: Login, Signup, Feed, Profile, Chat, Post, Comment
-- [x] Set up Redux store and slices
-- [x] Configure Tailwind CSS
+## Backend Development
+- [x] Implement follow/unfollow APIs in userController.js and routes/users.js
+- [x] Add follow/unfollow logging
+- [x] Test follow/unfollow APIs with Postman
+- [ ] Complete user profile management APIs
 
-## Project Configuration
-- [x] Create .env.example for environment variables
-- [x] Create docker-compose.yml for local development with MongoDB
-- [x] Create .gitignore
-- [x] Create README.md with project overview, features, tech stack, etc.
+## Frontend Development
+- [x] Enhance Feed component: Add post creation form, display likes/comments, handle interactions
+- [x] Enhance Profile component: Show followers/following counts, follow/unfollow buttons, edit profile
+- [x] Add Notifications component/UI for real-time updates
+- [x] Fix any React Router issues (blank page)
+- [x] Complete Redux async thunks for all API calls
+- [x] Add error handling in slices
 
-## Followup Steps
-- [x] Run npm install in backend and frontend
-- [x] Test the setup by running the servers
+## WebSocket Integration
+- [x] Ensure real-time notifications for likes, comments, follows, and chat
+- [x] Update socket events in server.js and frontend for follow/unfollow
+
+## Additional Features
+- [ ] Image uploads for posts and profiles (Cloudinary integration)
+- [ ] Share functionality for posts
+- [ ] Admin dashboard for moderation
+- [ ] Analytics dashboard
+
+## Testing
+- [ ] Test all APIs with Postman (auth, posts, comments, users, chat)
+- [ ] Stress test WebSocket connections
+
+## Deployment
+- [ ] Set up CI/CD with GitHub Actions
+- [ ] Configure Docker for deployment
+- [ ] Environment configuration
+- [ ] Production build optimization

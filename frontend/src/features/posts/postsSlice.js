@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import logger from '../../utils/logger';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -9,11 +10,14 @@ export const fetchPosts = createAsyncThunk(
   async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Fetching posts - page: ${page}, limit: ${limit}`);
       const response = await axios.get(`${API_URL}/posts?page=${page}&limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Posts fetched successfully: ${response.data.posts.length} posts`);
       return response.data;
     } catch (error) {
+      logger.error(`Posts fetch failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -24,11 +28,14 @@ export const createPost = createAsyncThunk(
   async (postData, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Creating new post for user`);
       const response = await axios.post(`${API_URL}/posts`, postData, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Post created successfully: ${response.data._id}`);
       return response.data;
     } catch (error) {
+      logger.error(`Post creation failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -39,11 +46,14 @@ export const likePost = createAsyncThunk(
   async (postId, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
+      logger.info(`Liking post: ${postId}`);
       const response = await axios.post(`${API_URL}/posts/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Post liked successfully: ${postId}`);
       return response.data;
     } catch (error) {
+      logger.error(`Post like failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -54,11 +64,14 @@ export const addComment = createAsyncThunk(
   async ({ postId, content }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_URL}/posts/${postId}/comments`, { content }, {
+      logger.info(`Adding comment to post: ${postId}`);
+      const response = await axios.post(`${API_URL}/comments`, { postId, content }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      logger.info(`Comment added successfully: ${response.data.comment._id}`);
       return response.data;
     } catch (error) {
+      logger.error(`Comment addition failed: ${error.response?.data?.message || error.message}`);
       return rejectWithValue(error.response.data);
     }
   }
@@ -124,9 +137,9 @@ const postsSlice = createSlice({
         }
       })
       .addCase(addComment.fulfilled, (state, action) => {
-        const index = state.posts.findIndex(post => post._id === action.payload._id);
+        const index = state.posts.findIndex(post => post._id === action.payload.comment.post);
         if (index !== -1) {
-          state.posts[index] = action.payload;
+          state.posts[index].comments.push(action.payload.comment);
         }
       });
   }
