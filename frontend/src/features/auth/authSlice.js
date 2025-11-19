@@ -58,14 +58,25 @@ export const updateProfile = createAsyncThunk(
     try {
       const token = localStorage.getItem('token');
       logger.info(`Updating profile for user`);
+      
+      // Check if it's FormData or regular object
+      const isFormData = profileData instanceof FormData;
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      
+      if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
       const response = await axios.put(`${API_URL}/auth/profile`, profileData, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: headers
       });
       logger.info(`Profile updated successfully`);
       return response.data;
     } catch (error) {
       logger.error(`Profile update failed: ${error.response?.data?.message || error.message}`);
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -125,7 +136,15 @@ const authSlice = createSlice({
       })
       .addCase(getProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user || action.payload;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user || state.user;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       })
       .addCase(getProfile.rejected, (state, action) => {
         state.isLoading = false;

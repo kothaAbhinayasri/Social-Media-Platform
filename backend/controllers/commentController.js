@@ -1,6 +1,7 @@
 const Comment = require('../models/Comment');
 const Post = require('../models/Post');
 const logger = require('../utils/logger');
+const notificationController = require('./notificationController');
 
 exports.addComment = async (req, res) => {
   try {
@@ -8,7 +9,7 @@ exports.addComment = async (req, res) => {
 
     logger.info(`Adding comment to post: ${postId} by user: ${req.user.username}`);
 
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate('author', '_id');
     if (!post || post.isDeleted) {
       return res.status(404).json({ message: 'Post not found' });
     }
@@ -27,11 +28,33 @@ exports.addComment = async (req, res) => {
       $push: { comments: comment._id }
     });
 
-    // If it's a reply, add to parent comment's replies
+    // If it's a reply, add to parent comment's replies and notify parent comment author
     if (parentCommentId) {
-      await Comment.findByIdAndUpdate(parentCommentId, {
-        $push: { replies: comment._id }
-      });
+      const parentComment = await Comment.findById(parentCommentId).populate('author', '_id');
+      if (parentComment && parentComment.author._id.toString() !== req.user._id.toString()) {
+        await Comment.findByIdAndUpdate(parentCommentId, {
+          $push: { replies: comment._id }
+        });
+        // Notify parent comment author
+        await notificationController.createNotification(
+          parentComment.author._id,
+          'comment',
+          req.user._id,
+          `${req.user.username} replied to your comment`,
+          { post: postId, comment: comment._id }
+        );
+      }
+    } else {
+      // Notify post author about new comment
+      if (post.author._id.toString() !== req.user._id.toString()) {
+        await notificationController.createNotification(
+          post.author._id,
+          'comment',
+          req.user._id,
+          `${req.user.username} commented on your post`,
+          { post: postId, comment: comment._id }
+        );
+      }
     }
 
     await comment.populate('author', 'username fullName profilePicture');
@@ -155,7 +178,7 @@ exports.deleteComment = async (req, res) => {
 
 exports.likeComment = async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
+    const comment = await Comment.findById(req.params.id).populate('author', '_id');
 
     if (!comment || comment.isDeleted) {
       return res.status(404).json({ message: 'Comment not found' });
@@ -186,6 +209,35 @@ exports.likeComment = async (req, res) => {
     });
   } catch (error) {
     logger.error(`Like/unlike comment operation failed for comment: ${req.params.id} by user: ${req.user.username} - ${error.message}`);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.reportComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.id);
+
+    if (!comment || comment.isDeleted) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    // Check if user already reported this comment
+    const alreadyReported = comment.reportCount > 0 && comment.isReported;
+
+    if (!alreadyReported) {
+      comment.isReported = true;
+      comment.reportCount = (comment.reportCount || 0) + 1;
+      await comment.save();
+
+      logger.info(`Comment ${comment._id} reported by user: ${req.user.username}`);
+    }
+
+    res.json({
+      message: 'Comment reported successfully',
+      reportCount: comment.reportCount
+    });
+  } catch (error) {
+    logger.error(`Report comment failed for user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

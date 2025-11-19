@@ -6,23 +6,28 @@ A full-stack social media platform built with React, Node.js, Express, MongoDB, 
 
 ### User Profiles & Connections
 - ✅ Signup/login with JWT authentication
-- ✅ Profile creation and updates
+- ✅ Profile creation and updates with image uploads
 - ✅ Follow/unfollow system
+- ✅ User search functionality
 
 ### Posts & Interactions
 - ✅ Create, edit, and delete posts (text, images, videos)
 - ✅ Like, comment, and share features
+- ✅ Report inappropriate content
 - ✅ Personalized news feed
+- ✅ File upload with Cloudinary integration
 
 ### Real-Time Features
 - ✅ WebSocket-based chat system
-- ✅ Real-time notifications for likes, comments, and follows
+- ✅ Real-time notifications for likes, comments, follows, and shares
 - ✅ Live feed updates
+- ✅ Notification management (mark as read, delete)
 
 ### Admin & Moderation
-- 🔄 Monitor and remove reported content
-- 🔄 Block/ban inappropriate users
-- 🔄 Analytics on engagement and growth
+- ✅ Monitor and remove reported content
+- ✅ Block/ban inappropriate users
+- ✅ Analytics on engagement and growth
+- ✅ Admin dashboard with comprehensive management tools
 
 ## 🛠 Technology Stack
 
@@ -92,25 +97,36 @@ social-media-platform/
    cd social-media-platform
    ```
 
-2. **Set up environment variables**
+2. **Set up backend environment variables**
    ```bash
+   cd backend
    cp .env.example .env
-   # Edit .env with your configuration
+   # Edit .env with your configuration:
+   # - MongoDB connection string
+   # - JWT secret key
+   # - Cloudinary credentials (for file uploads)
    ```
 
-3. **Install backend dependencies**
+3. **Set up frontend environment variables**
+   ```bash
+   cd ../frontend
+   # Create .env file with:
+   # REACT_APP_API_URL=http://localhost:5000/api
+   ```
+
+4. **Install backend dependencies**
    ```bash
    cd backend
    npm install
    ```
 
-4. **Install frontend dependencies**
+5. **Install frontend dependencies**
    ```bash
    cd ../frontend
    npm install
    ```
 
-5. **Start MongoDB**
+6. **Start MongoDB**
    ```bash
    # Using Docker
    docker run -d -p 27017:27017 --name mongodb mongo:latest
@@ -119,16 +135,27 @@ social-media-platform/
    mongod
    ```
 
-6. **Start the backend server**
+7. **Start the backend server**
    ```bash
    cd backend
-   npm start
+   npm run dev  # Development mode with auto-reload
+   # or
+   npm start    # Production mode
    ```
 
-7. **Start the frontend development server**
+8. **Start the frontend development server**
    ```bash
    cd frontend
    npm start
+   ```
+
+9. **Create an admin user** (Optional)
+   ```javascript
+   // In MongoDB, update a user document:
+   db.users.updateOne(
+     { email: "admin@example.com" },
+     { $set: { isAdmin: true } }
+   )
    ```
 
 The application will be available at:
@@ -150,16 +177,46 @@ docker-compose up --build
 
 ### Posts
 - `GET /api/posts` - Get posts feed
-- `POST /api/posts` - Create new post
+- `POST /api/posts` - Create new post (supports file uploads)
+- `GET /api/posts/:id` - Get post by ID
 - `PUT /api/posts/:id` - Update post
 - `DELETE /api/posts/:id` - Delete post
 - `POST /api/posts/:id/like` - Like/unlike post
-- `POST /api/posts/:id/comments` - Add comment
+- `POST /api/posts/:id/share` - Share post
+- `POST /api/posts/:id/report` - Report post
+
+### Comments
+- `POST /api/comments` - Add comment
+- `GET /api/comments/post/:postId` - Get comments for a post
+- `PUT /api/comments/:id` - Update comment
+- `DELETE /api/comments/:id` - Delete comment
+- `POST /api/comments/:id/like` - Like/unlike comment
+- `POST /api/comments/:id/report` - Report comment
 
 ### Users
-- `GET /api/users/:id` - Get user profile
-- `PUT /api/users/:id` - Update user profile
-- `POST /api/users/:id/follow` - Follow/unfollow user
+- `GET /api/users/profile/:id` - Get user profile
+- `GET /api/users/feed` - Get personalized feed
+- `GET /api/users/search` - Search users
+- `GET /api/users/followers/:id` - Get user's followers
+- `GET /api/users/following/:id` - Get users being followed
+- `POST /api/users/follow/:id` - Follow/unfollow user
+
+### Notifications
+- `GET /api/notifications` - Get user notifications
+- `PUT /api/notifications/:id/read` - Mark notification as read
+- `PUT /api/notifications/all/read` - Mark all notifications as read
+- `DELETE /api/notifications/:id` - Delete notification
+
+### Admin (Admin access required)
+- `GET /api/admin/analytics` - Get platform analytics
+- `GET /api/admin/reported/posts` - Get reported posts
+- `GET /api/admin/reported/comments` - Get reported comments
+- `GET /api/admin/users` - Get all users
+- `DELETE /api/admin/posts/:id` - Remove reported post
+- `DELETE /api/admin/comments/:id` - Remove reported comment
+- `POST /api/admin/users/:id/block` - Block user
+- `POST /api/admin/users/:id/unblock` - Unblock user
+- `POST /api/admin/dismiss-report` - Dismiss report
 
 ### Chat
 - `GET /api/chat/conversations` - Get user conversations

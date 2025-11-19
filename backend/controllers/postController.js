@@ -1,19 +1,47 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const uploadUtils = require('../utils/upload');
+const notificationController = require('./notificationController');
 
 exports.createPost = async (req, res) => {
   try {
-    const { content, images, videos, tags, location } = req.body;
+    const { content, tags, location } = req.body;
+    let images = [];
+    let videos = [];
 
     logger.info(`Post creation attempt by user: ${req.user.username} (${req.user._id})`);
+
+    // Handle file uploads if present
+    if (req.files) {
+      for (const file of req.files) {
+        try {
+          const result = await uploadUtils.uploadToCloudinary(file, 'social-media/posts');
+          if (file.mimetype.startsWith('video/')) {
+            videos.push(result.secure_url);
+          } else {
+            images.push(result.secure_url);
+          }
+        } catch (uploadError) {
+          logger.error(`File upload failed: ${uploadError.message}`);
+        }
+      }
+    }
+
+    // Also accept images/videos from body (for base64 or URLs)
+    if (req.body.images && Array.isArray(req.body.images)) {
+      images = [...images, ...req.body.images];
+    }
+    if (req.body.videos && Array.isArray(req.body.videos)) {
+      videos = [...videos, ...req.body.videos];
+    }
 
     const post = new Post({
       author: req.user._id,
       content,
-      images: images || [],
-      videos: videos || [],
-      tags: tags || [],
+      images,
+      videos,
+      tags: tags ? (Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim())) : [],
       location
     });
 
@@ -156,7 +184,7 @@ exports.deletePost = async (req, res) => {
 
 exports.likePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id).populate('author', '_id');
 
     if (!post || post.isDeleted) {
       return res.status(404).json({ message: 'Post not found' });
@@ -176,6 +204,17 @@ exports.likePost = async (req, res) => {
       // Like
       post.likes.push({ user: req.user._id });
       logger.info(`Post liked: ${post._id} by user: ${req.user.username}`);
+
+      // Create notification for post author
+      if (post.author._id.toString() !== req.user._id.toString()) {
+        await notificationController.createNotification(
+          post.author._id,
+          'like',
+          req.user._id,
+          `${req.user.username} liked your post`,
+          { post: post._id }
+        );
+      }
     }
 
     await post.save();
@@ -193,7 +232,7 @@ exports.likePost = async (req, res) => {
 
 exports.sharePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id).populate('author', '_id');
 
     if (!post || post.isDeleted) {
       return res.status(404).json({ message: 'Post not found' });
@@ -206,6 +245,17 @@ exports.sharePost = async (req, res) => {
     if (!existingShare) {
       post.shares.push({ user: req.user._id });
       await post.save();
+
+      // Create notification for post author
+      if (post.author._id.toString() !== req.user._id.toString()) {
+        await notificationController.createNotification(
+          post.author._id,
+          'share',
+          req.user._id,
+          `${req.user.username} shared your post`,
+          { post: post._id }
+        );
+      }
     }
 
     res.json({
@@ -213,6 +263,35 @@ exports.sharePost = async (req, res) => {
       shares: post.shares
     });
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.reportPost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post || post.isDeleted) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Check if user already reported this post
+    const alreadyReported = post.reportCount > 0 && post.isReported;
+
+    if (!alreadyReported) {
+      post.isReported = true;
+      post.reportCount = (post.reportCount || 0) + 1;
+      await post.save();
+
+      logger.info(`Post ${post._id} reported by user: ${req.user.username}`);
+    }
+
+    res.json({
+      message: 'Post reported successfully',
+      reportCount: post.reportCount
+    });
+  } catch (error) {
+    logger.error(`Report post failed for user: ${req.user.username} - ${error.message}`);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 const logger = require('../utils/logger');
+const notificationController = require('./notificationController');
 
 exports.getUserProfile = async (req, res) => {
   try {
@@ -18,11 +19,24 @@ exports.getUserProfile = async (req, res) => {
       isDeleted: false
     })
       .populate('author', 'username fullName profilePicture')
+      .populate({
+        path: 'comments',
+        populate: {
+          path: 'author',
+          select: 'username fullName profilePicture'
+        }
+      })
       .sort({ createdAt: -1 });
+
+    // Check if current user is following this user
+    const isFollowing = user.followers.some(
+      followerId => followerId.toString() === req.user._id.toString()
+    );
 
     res.json({
       user,
       posts,
+      isFollowing,
       stats: {
         postsCount: posts.length,
         followersCount: user.followers.length,
@@ -63,6 +77,15 @@ exports.followUser = async (req, res) => {
       currentUser.following.push(req.params.id);
       userToFollow.followers.push(req.user._id);
       logger.info(`User followed: ${req.user.username} followed ${userToFollow.username}`);
+
+      // Create notification for followed user
+      await notificationController.createNotification(
+        userToFollow._id,
+        'follow',
+        req.user._id,
+        `${req.user.username} started following you`,
+        {}
+      );
     }
 
     await currentUser.save();

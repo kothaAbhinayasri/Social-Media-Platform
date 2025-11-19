@@ -33,6 +33,7 @@ require('./models/User');
 require('./models/Post');
 require('./models/Comment');
 require('./models/Message');
+require('./models/Notification');
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -40,6 +41,8 @@ app.use('/api/posts', require('./routes/posts'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Socket.io for real-time features
 io.on('connection', (socket) => {
@@ -68,6 +71,11 @@ io.on('connection', (socket) => {
   socket.on('followUser', (data) => {
     io.to(data.followedUserId).emit('userFollowed', data);
     logger.info(`User ${data.followerId} followed user ${data.followedUserId}`);
+  });
+
+  socket.on('newNotification', (data) => {
+    io.to(data.userId).emit('notification', data);
+    logger.info(`Notification sent to user: ${data.userId}`);
   });
 
   socket.on('disconnect', () => {

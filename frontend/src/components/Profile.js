@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getProfile, updateProfile } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
+import UserProfile from './UserProfile';
 
-const Profile = () => {
+const Profile = ({ userId }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isLoading } = useSelector(state => state.auth);
@@ -11,22 +12,33 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     bio: '',
-    profilePicture: ''
+    profilePicture: '',
+    coverPicture: ''
   });
+  const [selectedProfilePic, setSelectedProfilePic] = useState(null);
+  const [selectedCoverPic, setSelectedCoverPic] = useState(null);
 
   useEffect(() => {
-    dispatch(getProfile());
-  }, [dispatch]);
+    if (!userId) {
+      dispatch(getProfile());
+    }
+  }, [dispatch, userId]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !userId) {
       setFormData({
         fullName: user.fullName || '',
         bio: user.bio || '',
-        profilePicture: user.profilePicture || ''
+        profilePicture: user.profilePicture || '',
+        coverPicture: user.coverPicture || ''
       });
     }
-  }, [user]);
+  }, [user, userId]);
+
+  // If userId is provided, show that user's profile
+  if (userId) {
+    return <UserProfile userId={userId} />;
+  }
 
   const handleChange = (e) => {
     setFormData({
@@ -35,10 +47,47 @@ const Profile = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (type === 'profile') {
+        setSelectedProfilePic(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData({ ...formData, profilePicture: reader.result });
+        };
+        reader.readAsDataURL(file);
+      } else if (type === 'cover') {
+        setSelectedCoverPic(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData({ ...formData, coverPicture: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(updateProfile(formData));
+    const submitData = new FormData();
+    submitData.append('fullName', formData.fullName);
+    submitData.append('bio', formData.bio);
+    if (selectedProfilePic) {
+      submitData.append('profilePicture', selectedProfilePic);
+    } else if (formData.profilePicture) {
+      submitData.append('profilePicture', formData.profilePicture);
+    }
+    if (selectedCoverPic) {
+      submitData.append('coverPicture', selectedCoverPic);
+    } else if (formData.coverPicture) {
+      submitData.append('coverPicture', formData.coverPicture);
+    }
+    
+    dispatch(updateProfile(submitData));
     setIsEditing(false);
+    setSelectedProfilePic(null);
+    setSelectedCoverPic(null);
   };
 
   const handleCancel = () => {
@@ -72,24 +121,63 @@ const Profile = () => {
       </header>
 
       {/* Profile Content */}
-      <main className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Cover Picture */}
+        {user?.coverPicture && (
+          <div className="mb-6 rounded-lg overflow-hidden">
+            <img
+              src={user.coverPicture}
+              alt="Cover"
+              className="w-full h-64 object-cover"
+            />
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow p-6">
           {/* Profile Picture */}
           <div className="flex flex-col items-center mb-6">
             <img
               src={user?.profilePicture || '/default-avatar.png'}
               alt={user?.fullName}
-              className="w-24 h-24 rounded-full mb-4"
+              className="w-32 h-32 rounded-full border-4 border-indigo-500 mb-4"
             />
             {isEditing && (
-              <input
-                type="url"
-                name="profilePicture"
-                value={formData.profilePicture}
-                onChange={handleChange}
-                placeholder="Profile picture URL"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'profile')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+                {!selectedProfilePic && (
+                  <input
+                    type="url"
+                    name="profilePicture"
+                    value={formData.profilePicture}
+                    onChange={handleChange}
+                    placeholder="Or enter profile picture URL"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  />
+                )}
+                <label className="block text-sm font-medium text-gray-700 mt-4">Cover Picture</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, 'cover')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+                {!selectedCoverPic && (
+                  <input
+                    type="url"
+                    name="coverPicture"
+                    value={formData.coverPicture}
+                    onChange={handleChange}
+                    placeholder="Or enter cover picture URL"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md mt-2"
+                  />
+                )}
+              </div>
             )}
           </div>
 

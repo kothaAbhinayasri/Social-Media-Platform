@@ -29,14 +29,79 @@ export const createPost = createAsyncThunk(
     try {
       const token = localStorage.getItem('token');
       logger.info(`Creating new post for user`);
-      const response = await axios.post(`${API_URL}/posts`, postData, {
-        headers: { Authorization: `Bearer ${token}` }
+      
+      // Handle FormData for file uploads
+      const formData = new FormData();
+      formData.append('content', postData.content || '');
+      if (postData.tags) {
+        formData.append('tags', Array.isArray(postData.tags) ? postData.tags.join(',') : postData.tags);
+      }
+      if (postData.location) {
+        formData.append('location', postData.location);
+      }
+      
+      // Append files if present
+      if (postData.files && postData.files.length > 0) {
+        postData.files.forEach((file) => {
+          formData.append('media', file);
+        });
+      }
+      
+      // Also support direct URLs
+      if (postData.images && Array.isArray(postData.images)) {
+        postData.images.forEach((image) => {
+          formData.append('images', image);
+        });
+      }
+      if (postData.videos && Array.isArray(postData.videos)) {
+        postData.videos.forEach((video) => {
+          formData.append('videos', video);
+        });
+      }
+      
+      const response = await axios.post(`${API_URL}/posts`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
       });
-      logger.info(`Post created successfully: ${response.data._id}`);
-      return response.data;
+      logger.info(`Post created successfully: ${response.data.post._id}`);
+      return response.data.post;
     } catch (error) {
       logger.error(`Post creation failed: ${error.response?.data?.message || error.message}`);
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const reportPost = createAsyncThunk(
+  'posts/reportPost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/posts/${postId}/report`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      logger.error(`Report post failed: ${error.response?.data?.message || error.message}`);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const sharePost = createAsyncThunk(
+  'posts/sharePost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_URL}/posts/${postId}/share`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      logger.error(`Share post failed: ${error.response?.data?.message || error.message}`);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -131,17 +196,23 @@ const postsSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(likePost.fulfilled, (state, action) => {
-        const index = state.posts.findIndex(post => post._id === action.payload._id);
+        const postId = action.payload.post?._id || action.payload._id;
+        const index = state.posts.findIndex(post => post._id === postId);
         if (index !== -1) {
-          state.posts[index] = action.payload;
+          state.posts[index].likes = action.payload.likes || action.payload.post?.likes || state.posts[index].likes;
         }
       })
       .addCase(addComment.fulfilled, (state, action) => {
-        const index = state.posts.findIndex(post => post._id === action.payload.comment.post);
+        const postId = action.payload.comment?.post || action.payload.postId;
+        const index = state.posts.findIndex(post => post._id === postId);
         if (index !== -1) {
+          if (!state.posts[index].comments) {
+            state.posts[index].comments = [];
+          }
           state.posts[index].comments.push(action.payload.comment);
         }
-      });
+      })
+
   }
 });
 

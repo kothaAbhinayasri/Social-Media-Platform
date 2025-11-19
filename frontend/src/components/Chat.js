@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchConversations, fetchMessages, sendMessage, addMessage } from '../features/chat/chatSlice';
+import { fetchConversations, fetchMessages, sendMessage } from '../features/chat/chatSlice';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 
@@ -25,24 +25,7 @@ const Chat = () => {
       socketRef.current.emit('join', user?._id);
     });
 
-    socketRef.current.on('receiveMessage', (message) => {
-      dispatch(addMessage(message));
-    });
-
-    socketRef.current.on('postLiked', (data) => {
-      // Handle real-time like notifications
-      console.log('Post liked:', data);
-    });
-
-    socketRef.current.on('postCommented', (data) => {
-      // Handle real-time comment notifications
-      console.log('Post commented:', data);
-    });
-
-    socketRef.current.on('userFollowed', (data) => {
-      // Handle real-time follow notifications
-      console.log('User followed:', data);
-    });
+    // Socket listeners are now handled in store.js
 
     return () => {
       if (socketRef.current) {

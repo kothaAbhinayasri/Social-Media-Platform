@@ -1,47 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchNotifications, markNotificationAsRead, deleteNotification } from '../features/notifications/notificationsSlice';
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
+  const dispatch = useDispatch();
+  const { notifications, unreadCount, isLoading } = useSelector(state => state.notifications);
 
-  // Mock notifications for now - in real app, this would come from Redux/API
   useEffect(() => {
-    // Mock data
-    setNotifications([
-      {
-        id: 1,
-        type: 'like',
-        message: 'John Doe liked your post',
-        timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-        read: false
-      },
-      {
-        id: 2,
-        type: 'comment',
-        message: 'Jane Smith commented on your post',
-        timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
-        read: false
-      },
-      {
-        id: 3,
-        type: 'follow',
-        message: 'Bob Johnson started following you',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-        read: true
-      }
-    ]);
-  }, []);
+    dispatch(fetchNotifications({ page: 1, limit: 20 }));
+  }, [dispatch]);
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(notif =>
-      notif.id === id ? { ...notif, read: true } : notif
-    ));
+  const handleMarkAsRead = (notificationId) => {
+    dispatch(markNotificationAsRead(notificationId));
+  };
+
+  const handleMarkAllAsRead = () => {
+    dispatch(markNotificationAsRead('all'));
+  };
+
+  const handleDelete = (notificationId) => {
+    dispatch(deleteNotification(notificationId));
   };
 
   const formatTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
     const now = new Date();
-    const diff = now - timestamp;
+    const date = new Date(timestamp);
+    const diff = now - date;
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -52,14 +39,6 @@ const Notifications = () => {
     return `${days}d ago`;
   };
 
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'like': return '❤️';
-      case 'comment': return '💬';
-      case 'follow': return '👤';
-      default: return '🔔';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -67,7 +46,19 @@ const Notifications = () => {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Notifications {unreadCount > 0 && `(${unreadCount})`}
+              </h1>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
             <button
               onClick={() => navigate('/feed')}
               className="text-indigo-600 hover:text-indigo-500"
@@ -81,7 +72,9 @@ const Notifications = () => {
       {/* Notifications List */}
       <main className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow">
-          {notifications.length === 0 ? (
+          {isLoading ? (
+            <div className="p-8 text-center text-gray-500">Loading notifications...</div>
+          ) : notifications.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               No notifications yet
             </div>
@@ -89,27 +82,44 @@ const Notifications = () => {
             <div className="divide-y divide-gray-200">
               {notifications.map((notification) => (
                 <div
-                  key={notification.id}
-                  className={`p-4 hover:bg-gray-50 cursor-pointer ${
-                    !notification.read ? 'bg-blue-50' : ''
+                  key={notification._id}
+                  className={`p-4 hover:bg-gray-50 ${
+                    !notification.isRead ? 'bg-blue-50' : ''
                   }`}
-                  onClick={() => markAsRead(notification.id)}
                 >
                   <div className="flex items-start space-x-3">
-                    <div className="text-2xl">
-                      {getNotificationIcon(notification.type)}
-                    </div>
+                    <img
+                      src={notification.from?.profilePicture || '/default-avatar.png'}
+                      alt={notification.from?.fullName}
+                      className="w-10 h-10 rounded-full"
+                    />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!notification.read ? 'font-semibold' : 'text-gray-900'}`}>
-                        {notification.message}
+                      <p className={`text-sm ${!notification.isRead ? 'font-semibold' : 'text-gray-900'}`}>
+                        {notification.content}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {formatTime(notification.timestamp)}
+                        {formatTime(notification.createdAt)}
                       </p>
                     </div>
-                    {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {!notification.isRead && (
+                        <button
+                          onClick={() => handleMarkAsRead(notification._id)}
+                          className="text-xs text-indigo-600 hover:text-indigo-500"
+                        >
+                          Mark read
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(notification._id)}
+                        className="text-xs text-red-600 hover:text-red-500"
+                      >
+                        Delete
+                      </button>
+                      {!notification.isRead && (
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
